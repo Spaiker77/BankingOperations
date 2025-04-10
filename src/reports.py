@@ -1,35 +1,29 @@
 import json
 import logging
+import os
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+from dotenv import load_dotenv
+
+# Загрузка переменных окружения
+load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Пути к файлам
-PROJECT_ROOT = Path(__file__).parent.parent
-EXCEL_PATH = PROJECT_ROOT / "data" / "transactions.xlsx"
-SETTINGS_PATH = PROJECT_ROOT / "user_settings.json"
+# Получение API ключа
+API_LAYER_KEY = os.getenv("API_LAYER_KEY")
+if not API_LAYER_KEY:
+    logger.warning("API ключ не найден в .env файле")
 
 
-def load_settings() -> dict:
-    """Загружает настройки из JSON-файла"""
+def load_transactions(file_path: str) -> pd.DataFrame:
+    """Загружает транзакции из указанного файла"""
     try:
-        with open(SETTINGS_PATH, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Ошибка загрузки настроек: {str(e)}")
-        return {}
-
-
-def load_transactions() -> pd.DataFrame:
-    """Загружает транзакции из Excel-файла"""
-    try:
-        df = pd.read_excel(EXCEL_PATH)
+        df = pd.read_excel(file_path)
 
         # Проверка обязательных колонок
         required_columns = ["Дата операции", "Категория", "Сумма платежа"]
@@ -47,22 +41,16 @@ def load_transactions() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def spending_by_category(category: str, date: Optional[str] = None) -> str:
-    """
-    Возвращает траты по категории за последние 3 месяца в формате JSON
-
-    """
+def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> str:
+    """Анализ трат по категории"""
     try:
-        # Загрузка данных и настроек
-        transactions = load_transactions()
-
-        # Определяем дату отсчета
+        # Определение периода
         end_date = pd.to_datetime(date) if date else datetime.now()
         start_date = end_date - timedelta(days=90)
 
         if transactions.empty:
-            logger.error("Нет данных для анализа")
-            return json.dumps([])
+            logger.error("Нет данных для анализа")  # Добавлено логирование
+            return json.dumps({"error": "Нет данных для анализа"})
 
         # Фильтрация данных
         filtered = transactions[
@@ -70,13 +58,10 @@ def spending_by_category(category: str, date: Optional[str] = None) -> str:
             & (transactions["Дата операции"].between(start_date, end_date))
         ]
 
-        logger.info(f"Найдено записей: {len(filtered)}")
-
         # Формирование результата
-        result = filtered[["Дата операции", "Категория", "Сумма платежа", "Описание"]].to_dict(orient="records")
-
-        return json.dumps(result, ensure_ascii=False, indent=2)
+        result = filtered[["Дата операции", "Категория", "Сумма платежа", "Описание"]]
+        return result.to_json(orient="records", force_ascii=False, indent=2)
 
     except Exception as e:
-        logger.error(f"Ошибка формирования отчета: {str(e)}")
-        return json.dumps([])
+        logger.error(f"Ошибка: {str(e)}")
+        return json.dumps({"error": str(e)})

@@ -2,9 +2,13 @@ import json
 import logging
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
 import pandas as pd
 import requests
+
+# Загрузка переменных окружения из .env файла
+load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(
@@ -13,6 +17,11 @@ logging.basicConfig(
     filename="app.log",
     filemode="a",
 )
+
+# Получение API ключа из переменных окружения
+API_LAYER_KEY = os.getenv("API_LAYER_KEY")
+if not API_LAYER_KEY:
+    logging.warning("API ключ не найден в .env файле (переменная API_LAYER_KEY)")
 
 
 def get_greeting(datetime_obj: datetime) -> str:
@@ -122,12 +131,16 @@ def fetch_currency_rates(currencies: list[str]) -> list[dict]:
         return []
 
 
-def fetch_stock_prices(stocks: list[str], api_key: str) -> list[dict]:
+def fetch_stock_prices(stocks: list[str]) -> list[dict]:
     """Получает цены акций через Alpha Vantage API."""
     prices = []
+    if not API_LAYER_KEY:
+        logging.error("API ключ не доступен для получения цен акций")
+        return prices
+
     for stock in stocks:
         try:
-            url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={stock}&apikey={api_key}"
+            url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={stock}&apikey={API_LAYER_KEY}"
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             data = response.json()

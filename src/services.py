@@ -1,13 +1,23 @@
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
+from dotenv import load_dotenv
+
+# Загрузка переменных окружения из .env файла
+load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # Исправлено: Используем __name__
+
+# Получение API ключа из переменных окружения
+API_LAYER_KEY = os.getenv("API_LAYER_KEY")
+if not API_LAYER_KEY:
+    logger.warning("API ключ не найден в .env файле (переменная API_LAYER_KEY)")
 
 # Путь к Excel-файлу
 EXCEL_PATH = Path("C:/Users/spaik/PycharmProjects/BankingOperations/data/transactions.xlsx")
@@ -35,10 +45,11 @@ def load_transactions() -> List[Dict[str, Any]]:
         return []
 
 
-def simple_search(query: str) -> str:
+def simple_search(query: str, transactions: List[Dict[str, Any]]) -> str:
     """
-    Простой поиск транзакций по описанию или категории
-    Возвращает JSON-ответ с результатами
+    Простой поиск транзакций по описанию или категории.
+    Принимает строку запроса и список транзакций.
+    Возвращает JSON-ответ с результатами.
     """
     try:
         # Валидация запроса
@@ -46,10 +57,9 @@ def simple_search(query: str) -> str:
             logger.warning("Получен пустой или некорректный запрос")
             return json.dumps([])
 
-        # Загрузка транзакций
-        transactions = load_transactions()
-        if not transactions:
-            logger.warning("Нет данных для поиска")
+        # Валидация транзакций
+        if not isinstance(transactions, list):
+            logger.error("Транзакции должны быть представлены в виде списка.")
             return json.dumps([])
 
         # Нормализация запроса

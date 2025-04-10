@@ -1,12 +1,18 @@
 import json
 import sys
+import os
 from datetime import datetime
 
-from reports import spending_by_category
-from services import simple_search
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Импорт функций из модулей
-from views import generate_response
+try:
+    from src.reports import spending_by_category
+    from src.services import simple_search
+    from src.views import generate_response
+except ImportError:
+    from reports import spending_by_category
+    from services import simple_search
+    from views import generate_response
 
 
 def parse_date(date_str: str) -> datetime:
@@ -18,8 +24,8 @@ def parse_date(date_str: str) -> datetime:
 
 
 def main():
-    # Задаем путь к файлу
-    file_path = r"C:UsersspaikPycharmProjectsBankingOperationsdata"
+    # Полный путь к файлу транзакций
+    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "transactions.xlsx")
 
     if len(sys.argv) < 2:
         print("Доступные команды:")
@@ -34,20 +40,17 @@ def main():
         if command == "отчет":
             if len(sys.argv) < 3:
                 raise ValueError("Не указана дата для отчета")
-
             date = parse_date(sys.argv[2])
             result = generate_response(date.strftime("%Y-%m-%d %H:%M:%S"), file_path)
 
         elif command == "поиск":
             if len(sys.argv) < 3:
                 raise ValueError("Не указан поисковый запрос")
-
             result = simple_search(sys.argv[2])
 
         elif command == "категория":
             if len(sys.argv) < 3:
                 raise ValueError("Не указана категория")
-
             category = sys.argv[2]
             end_date = parse_date(sys.argv[3]).strftime("%Y-%m-%d") if len(sys.argv) > 3 else None
             result = spending_by_category(category=category, date=end_date, file_path=file_path)
@@ -59,15 +62,6 @@ def main():
 
     except Exception as e:
         print(f"Ошибка: {str(e)}")
-        print(f"Пример использования для команды {command}:")
-        if command == "отчет":
-            print("отчет YYYY-MM-DD_HH:MM:SS")
-        elif command == "поиск":
-            print("поиск ПОИСКОВЫЙ_ЗАПРОС")
-        elif command == "категория":
-            print("категория ИМЯ_КАТЕГОРИИ [дата_конца_YYYY-MM-DD]")
-        else:
-            print("Доступные команды: отчет, поиск, категория")
         sys.exit(1)
 
 
