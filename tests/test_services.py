@@ -136,3 +136,44 @@ def test_search_invalid_transactions():
     """Тест с неверным типом transactions"""
     result = simple_search("test", "not a list")
     assert result == json.dumps([])
+
+
+def test_search_finds_matching_transactions():
+    """Проверяет что поиск находит нужные транзакции"""
+    transactions = [
+        {"Описание": "Покупка еды", "Категория": "Супермаркет"},
+        {"Описание": "Такси", "Категория": "Транспорт"}
+    ]
+
+    result = simple_search("Такси", transactions)
+    found = json.loads(result)
+
+    assert len(found) == 1
+    assert found[0]["Описание"] == "Такси"
+
+
+def test_empty_query_returns_empty_list():
+    """Проверяет обработку пустого запроса"""
+    with patch('src.services.logger.warning') as mock_log:
+        result = simple_search("", [])
+        assert result == json.dumps([])
+        mock_log.assert_called_once()
+
+
+def test_case_insensitive_search():
+    """Проверяет регистронезависимый поиск"""
+    transactions = [{"Описание": "Кинотеатр", "Категория": "Развлечения"}]
+
+    result = simple_search("КИНО", transactions)
+    found = json.loads(result)
+
+    assert len(found) == 1
+
+
+def test_error_handling():
+    """Проверяет обработку ошибок"""
+    with patch('src.services.logger.error') as mock_log:
+        # Передаем некорректные данные
+        result = simple_search("test", "not_a_list")
+        assert result == json.dumps([])
+        mock_log.assert_called_once()
